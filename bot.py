@@ -10,7 +10,6 @@ env = environs.Env()
 env.read_env()
 
 logger = logging.getLogger('bot_logger')
-logger.setLevel(logging.WARNING)
 
 devman_api_token = env('DEVMAN_TOKEN')
 telegram_token = env('TELEGRAM_TOKEN')
@@ -70,6 +69,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     bot = telegram.Bot(token=telegram_token)
+
+    logger.setLevel(logging.WARNING)
 
     bot_loop(
         url=dewman_api_url_long,
