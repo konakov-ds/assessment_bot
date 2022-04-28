@@ -18,7 +18,7 @@ dewman_api_url = 'https://dvmn.org/api/user_reviews/'
 dewman_api_url_long = 'https://dvmn.org/api/long_polling/'
 
 
-def send_message_from_bot(chat_id, response=None):
+def send_message_from_bot(bot, chat_id, response=None):
     if response:
         message_title = f'У вас проверили работу: "{response["lesson_title"]}"\n'
         if response['is_negative']:
@@ -35,6 +35,7 @@ def send_message_from_bot(chat_id, response=None):
 
 
 def run_bot(
+        bot,
         url,
         token,
         chat_id,
@@ -47,15 +48,14 @@ def run_bot(
             params = {'timestamp': last_attempt_timestamp}
             response = requests.get(url, headers=headers, params=params, timeout=timeout)
             response.raise_for_status()
-            if response:
-                response = response.json()
-                if response['status'] == 'timeout':
-                    last_attempt_timestamp = response['timestamp_to_request']
-                    continue
-                last_attempt_timestamp = response['last_attempt_timestamp']
-                attempts = response['new_attempts']
-                for attempt in attempts:
-                    send_message_from_bot(chat_id, response=attempt)
+            answer = response.json()
+            if answer['status'] == 'timeout':
+                last_attempt_timestamp = answer['timestamp_to_request']
+                continue
+            last_attempt_timestamp = answer['last_attempt_timestamp']
+            attempts = answer['new_attempts']
+            for attempt in attempts:
+                send_message_from_bot(bot, chat_id, response=attempt)
         except requests.exceptions.ReadTimeout:
             continue
         except requests.exceptions.ConnectionError:
@@ -68,11 +68,12 @@ if __name__ == '__main__':
     parser.add_argument('--chat_id')
     args = parser.parse_args()
 
-    bot = telegram.Bot(token=telegram_token)
+    tg_bot = telegram.Bot(token=telegram_token)
 
     logger.setLevel(logging.WARNING)
 
     run_bot(
+        bot=tg_bot,
         url=dewman_api_url_long,
         token=devman_api_token,
         chat_id=args.chat_id,
