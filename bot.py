@@ -34,7 +34,7 @@ def send_message_from_bot(chat_id, response=None):
             )
 
 
-def bot_loop(
+def run_bot(
         url,
         token,
         chat_id,
@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
     logger.setLevel(logging.WARNING)
 
-    bot_loop(
+    run_bot(
         url=dewman_api_url_long,
         token=devman_api_token,
         chat_id=args.chat_id,
