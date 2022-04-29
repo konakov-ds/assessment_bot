@@ -18,6 +18,18 @@ dewman_api_url = 'https://dvmn.org/api/user_reviews/'
 dewman_api_url_long = 'https://dvmn.org/api/long_polling/'
 
 
+class BotLogsHandler(logging.Handler):
+
+    def __init__(self, bot, chat_id):
+        super().__init__()
+        self.bot = bot
+        self.chat_id = chat_id
+
+    def emit(self, record):
+        record_formated = self.format(record)
+        self.bot.send_message(chat_id=self.chat_id, text=record_formated)
+
+
 def send_message_from_bot(bot, chat_id, response=None):
     if response:
         message_title = f'У вас проверили работу: "{response["lesson_title"]}"\n'
@@ -42,25 +54,30 @@ def run_bot(
         timeout=60,
         last_attempt_timestamp=None
 ):
+    logger.warning('Бот запущен')
     while True:
         try:
             headers = {'Authorization': f'Token {token}'}
             params = {'timestamp': last_attempt_timestamp}
-            response = requests.get(url, headers=headers, params=params, timeout=timeout)
-            response.raise_for_status()
-            answer = response.json()
-            if answer['status'] == 'timeout':
-                last_attempt_timestamp = answer['timestamp_to_request']
+            try:
+                response = requests.get(url, headers=headers, params=params, timeout=timeout)
+                response.raise_for_status()
+                answer = response.json()
+                if answer['status'] == 'timeout':
+                    last_attempt_timestamp = answer['timestamp_to_request']
+                    continue
+                last_attempt_timestamp = answer['last_attempt_timestamp']
+                attempts = answer['new_attempts']
+                for attempt in attempts:
+                    send_message_from_bot(bot, chat_id, response=attempt)
+            except requests.exceptions.ReadTimeout:
                 continue
-            last_attempt_timestamp = answer['last_attempt_timestamp']
-            attempts = answer['new_attempts']
-            for attempt in attempts:
-                send_message_from_bot(bot, chat_id, response=attempt)
-        except requests.exceptions.ReadTimeout:
-            continue
-        except requests.exceptions.ConnectionError:
-            logger.warning('Ошибка соединения с сервером')
-            sleep(5)
+            except requests.exceptions.ConnectionError:
+                logger.warning('Ошибка соединения с сервером')
+                sleep(60)
+                continue
+        except telegram.error.TelegramError:
+            logger.error('Сбой в telegram')
 
 
 if __name__ == '__main__':
@@ -71,6 +88,7 @@ if __name__ == '__main__':
     tg_bot = telegram.Bot(token=telegram_token)
 
     logger.setLevel(logging.WARNING)
+    logger.addHandler(BotLogsHandler(tg_bot, args.chat_id))
 
     run_bot(
         bot=tg_bot,
