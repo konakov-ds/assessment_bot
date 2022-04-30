@@ -3,6 +3,7 @@ import environs
 import logging
 import requests
 import telegram
+import os
 from time import sleep
 
 
@@ -55,27 +56,25 @@ def run_bot(
         last_attempt_timestamp=None
 ):
     logger.warning('Бот запущен')
+    headers = {'Authorization': f'Token {token}'}
     while True:
+        params = {'timestamp': last_attempt_timestamp}
         try:
-            headers = {'Authorization': f'Token {token}'}
-            params = {'timestamp': last_attempt_timestamp}
-            try:
-                response = requests.get(url, headers=headers, params=params, timeout=timeout)
-                response.raise_for_status()
-                answer = response.json()
-                if answer['status'] == 'timeout':
-                    last_attempt_timestamp = answer['timestamp_to_request']
-                    continue
-                last_attempt_timestamp = answer['last_attempt_timestamp']
-                attempts = answer['new_attempts']
-                for attempt in attempts:
-                    send_message_from_bot(bot, chat_id, response=attempt)
-            except requests.exceptions.ReadTimeout:
+            response = requests.get(url, headers=headers, params=params, timeout=timeout)
+            response.raise_for_status()
+            response_content = response.json()
+            if response_content['status'] == 'timeout':
+                last_attempt_timestamp = response_content['timestamp_to_request']
                 continue
-            except requests.exceptions.ConnectionError:
-                logger.warning('Ошибка соединения с сервером')
-                sleep(60)
-                continue
+            last_attempt_timestamp = response_content['last_attempt_timestamp']
+            attempts = response_content['new_attempts']
+            for attempt in attempts:
+                send_message_from_bot(bot, chat_id, response=attempt)
+        except requests.exceptions.ReadTimeout:
+            continue
+        except requests.exceptions.ConnectionError:
+            logger.warning('Ошибка соединения с сервером')
+            sleep(60)
         except telegram.error.TelegramError:
             logger.error('Сбой в telegram')
 
@@ -85,14 +84,19 @@ if __name__ == '__main__':
     parser.add_argument('--chat_id')
     args = parser.parse_args()
 
+    if not args.chat_id:
+        chat_id = os.environ.get('chat_id')
+    else:
+        chat_id = args.chat_id
+
     tg_bot = telegram.Bot(token=telegram_token)
 
     logger.setLevel(logging.WARNING)
-    logger.addHandler(BotLogsHandler(tg_bot, args.chat_id))
+    logger.addHandler(BotLogsHandler(tg_bot, chat_id))
 
     run_bot(
         bot=tg_bot,
         url=dewman_api_url_long,
         token=devman_api_token,
-        chat_id=args.chat_id,
+        chat_id=chat_id,
     )
