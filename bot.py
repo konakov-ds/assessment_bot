@@ -31,10 +31,10 @@ class BotLogsHandler(logging.Handler):
         self.bot.send_message(chat_id=self.chat_id, text=record_formated)
 
 
-def send_message_from_bot(bot, chat_id, response=None):
-    if response:
-        message_title = f'У вас проверили работу: "{response["lesson_title"]}"\n'
-        if response['is_negative']:
+def send_message_from_bot(bot, chat_id, attempt=None):
+    if attempt:
+        message_title = f'У вас проверили работу: "{attempt["lesson_title"]}"\n'
+        if attempt['is_negative']:
             bot.send_message(
                 chat_id=chat_id,
                 text=f'{message_title}К сожалению в работе нашлись ошибки.'
@@ -62,12 +62,12 @@ def run_bot(
         try:
             response = requests.get(url, headers=headers, params=params, timeout=timeout)
             response.raise_for_status()
-            response_content = response.json()
-            if response_content['status'] == 'timeout':
-                last_attempt_timestamp = response_content['timestamp_to_request']
+            review_content = response.json()
+            if review_content['status'] == 'timeout':
+                last_attempt_timestamp = review_content['timestamp_to_request']
                 continue
-            last_attempt_timestamp = response_content['last_attempt_timestamp']
-            attempts = response_content['new_attempts']
+            last_attempt_timestamp = review_content['last_attempt_timestamp']
+            attempts = review_content['new_attempts']
             for attempt in attempts:
                 send_message_from_bot(bot, chat_id, response=attempt)
         except requests.exceptions.ReadTimeout:
