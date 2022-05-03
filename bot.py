@@ -81,22 +81,17 @@ def run_bot(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--chat_id')
+    parser.add_argument('--chat_id', default=os.environ.get('chat_id'))
     args = parser.parse_args()
-
-    if not args.chat_id:
-        chat_id = os.environ.get('chat_id')
-    else:
-        chat_id = args.chat_id
 
     tg_bot = telegram.Bot(token=telegram_token)
 
     logger.setLevel(logging.WARNING)
-    logger.addHandler(BotLogsHandler(tg_bot, chat_id))
+    logger.addHandler(BotLogsHandler(tg_bot, args.chat_id))
 
     run_bot(
         bot=tg_bot,
         url=dewman_api_url_long,
         token=devman_api_token,
-        chat_id=chat_id,
+        chat_id=args.chat_id,
     )
