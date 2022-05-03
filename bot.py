@@ -7,16 +7,7 @@ import os
 from time import sleep
 
 
-env = environs.Env()
-env.read_env()
-
 logger = logging.getLogger('bot_logger')
-
-devman_api_token = env('DEVMAN_TOKEN')
-telegram_token = env('TELEGRAM_TOKEN')
-
-dewman_api_url = 'https://dvmn.org/api/user_reviews/'
-dewman_api_url_long = 'https://dvmn.org/api/long_polling/'
 
 
 class BotLogsHandler(logging.Handler):
@@ -80,6 +71,15 @@ def run_bot(
 
 
 if __name__ == '__main__':
+    env = environs.Env()
+    env.read_env()
+
+    devman_api_token = env('DEVMAN_TOKEN')
+    telegram_token = env('TELEGRAM_TOKEN')
+
+    dewman_api_url = 'https://dvmn.org/api/user_reviews/'
+    dewman_api_url_long = 'https://dvmn.org/api/long_polling/'
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--chat_id', default=os.environ.get('chat_id'))
     args = parser.parse_args()
